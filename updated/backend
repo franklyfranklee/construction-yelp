@@ -1,0 +1,99 @@
+import { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import axios from 'axios';
+
+function App() {
+  const [userType, setUserType] = useState(null); // 'customer' or 'contractor'
+
+  return (
+    <Router>
+      <div className="p-4">
+        <h1 className="text-2xl font-bold">Contractor Review Platform</h1>
+        {!userType && (
+          <div className="flex gap-4 mt-4">
+            <Button onClick={() => setUserType('customer')}>Login as Customer</Button>
+            <Button onClick={() => setUserType('contractor')}>Login as Contractor</Button>
+          </div>
+        )}
+        {userType && <Navigate to={`/${userType}-dashboard`} replace />}
+      </div>
+      <Routes>
+        <Route path="/customer-dashboard" element={<CustomerDashboard />} />
+        <Route path="/contractor-dashboard" element={<ContractorDashboard />} />
+      </Routes>
+    </Router>
+  );
+}
+
+function CustomerDashboard() {
+  const [bookings, setBookings] = useState([]);
+  const [contractors, setContractors] = useState([]);
+
+  useEffect(() => {
+    axios.get('/api/contractors')
+      .then(response => setContractors(response.data))
+      .catch(error => console.error(error));
+  }, []);
+
+  const bookContractor = (contractorId) => {
+    axios.post('/api/bookings', { contractorId })
+      .then(response => setBookings([...bookings, response.data]))
+      .catch(error => console.error(error));
+  };
+
+  return (
+    <Card>
+      <CardContent>
+        <h2 className="text-xl font-bold">Customer Dashboard</h2>
+        <h3 className="mt-2">Your Booked Services:</h3>
+        <ul>
+          {bookings.map((b) => (
+            <li key={b.id}>{b.contractorName} - {b.rating} ⭐</li>
+          ))}
+        </ul>
+        <h3 className="mt-4">Available Contractors:</h3>
+        {contractors.map((c) => (
+          <div key={c.id} className="flex justify-between mt-2">
+            <span>{c.name} - {c.rating} ⭐</span>
+            <Button onClick={() => bookContractor(c.id)}>Book</Button>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function ContractorDashboard() {
+  const [workOrders, setWorkOrders] = useState([]);
+
+  useEffect(() => {
+    axios.get('/api/workorders')
+      .then(response => setWorkOrders(response.data))
+      .catch(error => console.error(error));
+  }, []);
+
+  const acceptWorkOrder = (id) => {
+    axios.post('/api/workorders/accept', { id })
+      .then(() => setWorkOrders(workOrders.filter(order => order.id !== id)))
+      .catch(error => console.error(error));
+  };
+
+  return (
+    <Card>
+      <CardContent>
+        <h2 className="text-xl font-bold">Contractor Dashboard</h2>
+        <h3 className="mt-2">Pending Work Orders:</h3>
+        {workOrders.map((order) => (
+          <div key={order.id} className="flex justify-between mt-2">
+            <span>{order.customerName} - {order.rating} ⭐</span>
+            <Button onClick={() => acceptWorkOrder(order.id)}>Accept</Button>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+export default App;
